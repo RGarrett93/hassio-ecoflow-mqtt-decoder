@@ -99,7 +99,7 @@ mqtt_password: "your_mqtt_password"
 
 * Each device is identified by its serial number (`device_sn`). The last 4 characters (e.g., `ps1234`) are used in entity IDs.
 * If a device stops reporting for 5 minutes, it is marked as **offline** and its sensor states are reset to zero.
-* The add-on does **not** talk to EcoFlow Cloud — it only listens and publishes via **local MQTT** using DNS redirect.
+* The add-on does **not** talk to EcoFlow Cloud — it only listens and publishes via **local MQTT**.
 
 ---
 
