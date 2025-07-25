@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+option java_package = "com.tomvd.psbridge";
+option java_outer_classname = "Ecoflow";
+option java_multiple_files = true;
+
+message Header
+{
+  bytes pdata = 1;
+  int32 src = 2;
+  int32 dest = 3;
+  int32 d_src= 4;
+  int32 d_dest = 5;
+  int32 enc_type = 6;
+  int32 check_type = 7;
+  int32 cmd_func = 8;
+  int32 cmd_id = 9;
+  int32 data_len = 10;
+  int32 need_ack = 11;
+  int32 is_ack = 12;
+  int32 seq = 14;
+  int32 product_id = 15;
+  int32 version = 16;
+  int32 payload_ver = 17;
+  int32 time_snap = 18;
+  int32 is_rw_cmd = 19;
+  int32 is_queue = 20;
+  int32 ack_type= 21;
+  string code = 22;
+  string from = 23;
+  string module_sn = 24;
+  string device_sn = 25;
+}
+
+message HeaderMessage {
+  repeated Header header = 1;
+}
+
+message InverterHeartbeat {
+  uint32 inv_error_code = 1;
+  uint32 inv_warning_code = 3;
+  uint32 pv1_error_code = 2;
+  uint32 pv1_warning_code = 4;
+  uint32 pv2_error_code = 5;
+  uint32 pv2_warning_code = 6;
+  uint32 bat_error_code = 7;
+  uint32 bat_warning_code = 8;
+  uint32 llc_error_code = 9;
+  uint32 llc_warning_code = 10;
+  uint32 pv1_status = 11;
+  uint32 pv2_status = 12;
+  uint32 bat_status = 13;
+  uint32 llc_status = 14;
+  uint32 inv_status = 15;
+  int32 pv1_input_volt = 16;
+  int32 pv1_op_volt = 17;
+  int32 pv1_input_cur = 18;
+  int32 pv1_input_watts = 19;
+  int32 pv1_temp = 20;
+  int32 pv2_input_volt = 21;
+  int32 pv2_op_volt = 22;
+  int32 pv2_input_cur = 23;
+  int32 pv2_input_watts = 24;
+  int32 pv2_temp = 25;
+  int32 bat_input_volt = 26;
+  int32 bat_op_volt = 27;
+  int32 bat_input_cur = 28;
+  int32 bat_input_watts = 29;
+  int32 bat_temp = 30;
+  uint32 bat_soc = 31;
+  int32 llc_input_volt = 32;
+  int32 llc_op_volt = 33;
+  int32 llc_temp = 34;
+  int32 inv_input_volt = 35;
+  int32 inv_op_volt = 36;
+  int32 inv_output_cur = 37;
+  int32 inv_output_watts = 38;
+  int32 inv_temp = 39;
+  int32 inv_freq = 40;
+  int32 inv_dc_cur = 41;
+  int32 bp_type = 42;
+  int32 inv_relay_status = 43;
+  int32 pv1_relay_status = 44;
+  int32 pv2_relay_status = 45;
+  uint32 install_country = 46;
+  uint32 install_town = 47;
+  uint32 permanent_watts = 48;
+  uint32 dynamic_watts = 49;
+  uint32 supply_priority = 50;
+  uint32 lower_limit = 51;
+  uint32 upper_limit = 52;
+  uint32 inv_on_off = 53;
+  uint32 wireless_error_code = 54;
+  uint32 wireless_warning_code = 55;
+  uint32 inv_brightness = 56;
+  uint32 heartbeat_frequency = 57;
+  uint32 rated_power = 58;
+  uint32 battery_charge_remain = 59;
+  uint32 battery_discharge_remain = 60;
+}
+
+message EventRecordItem {
+  uint32 timestamp = 1;
+  uint32 sys_ms = 2;
+  uint32 event_no = 3;
+  repeated float event_detail = 4;
+}
+message EventRecordReport {
+  uint32 event_ver = 1;
+  uint32 event_seq = 2;
+  repeated EventRecordItem event_item = 3;
+}
+message EventInfoReportAck {
+  uint32 result = 1;
+  uint32 event_seq = 2;
+  uint32 event_item_num = 3;
+}
+message ProductNameSet {
+  string name = 1;
+}
+message ProductNameSetAck {
+  uint32 result = 1;
+}
+message ProductNameGet {}
+message ProductNameGetAck {
+  string name = 3;
+}
+message RTCTimeGet {}
+
+message RTCTimeGetAck {
+  uint32 timestamp = 1;
+  int32 timezone = 2;
+}
+message RTCTimeSet {
+  uint32 timestamp = 1;
+  int32 timezone = 2;
+}
+message RTCTimeSetAck {
+  uint32 result = 1;
+}
+
+
+message Send_Header_Msg
+{
+  Header msg = 1;
+}
+
+message SendMsgHart
+{
+  int32 link_id = 1;
+  int32 src = 2;
+  int32 dest = 3;
+  int32 d_src = 4;
+  int32 d_dest = 5;
+  int32 enc_type = 6;
+  int32 check_type = 7;
+  int32 cmd_func = 8;
+  int32 cmd_id = 9;
+  int32 data_len = 10;
+  int32 need_ack = 11;
+  int32 is_ack = 12;
+  int32 ack_type = 13;
+  int32 seq = 14;
+  int32 time_snap = 15;
+  int32 is_rw_cmd = 16;
+  int32 is_queue = 17;
+  int32 product_id = 18;
+  int32 version = 19;
+}
+
+message setMessage {
+  setHeader header = 1;
+}
+message setHeader {
+  bytes pdata = 1;
+  int32 src = 2;
+  int32 dest = 3;
+  int32 d_src = 4;
+  int32 d_dest = 5;
+  int32 enc_type = 6;
+  int32 check_type = 7;
+  int32 cmd_func = 8;
+  int32 cmd_id = 9;
+  int32 data_len = 10;
+  int32 need_ack = 11;
+  int32 is_ack = 12;
+  int32 seq = 14;
+  int32 product_id = 15;
+  int32 version = 16;
+  int32 payload_ver = 17;
+  int32 time_snap = 18;
+  int32 is_rw_cmd = 19;
+  int32 is_queue = 20;
+  int32 ack_type = 21;
+  string code = 22;
+  string from = 23;
+  string module_sn = 24;
+  string device_sn = 25;
+}
+
+message setValue {
+  int32 value = 1;
+  int32 value2 = 2;
+}
+
+message SupplyPriorityPack {
+  uint32 supply_priority = 1;
+}
+
+message BatLowerPack {
+  int32 lower_limit = 1;
+}
+
+message BatUpperPack {
+  int32 upper_limit = 1;
+}
+
+message BrightnessPack {
+  int32 brightness = 1;
+}

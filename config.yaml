@@ -1,0 +1,24 @@
+name: "EcoFlow MQTT Decoder"
+version: "1.0.0"
+slug: "ecoflow_mqtt_decoder"
+description: "Decodes EcoFlow MQTT Protobuf messages and republishes to Home Assistant via MQTT discovery."
+arch:
+  - amd64
+  - armv7
+  - armhf
+  - aarch64
+  - i386
+startup: application
+boot: auto
+init: false
+host_network: true
+options:
+  mqtt_host: "core-mosquitto"
+  mqtt_port: 1883
+  mqtt_user: ""
+  mqtt_password: ""
+schema:
+  mqtt_host: str
+  mqtt_port: int
+  mqtt_user: str
+  mqtt_password: password
