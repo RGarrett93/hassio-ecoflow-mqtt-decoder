@@ -110,7 +110,7 @@ This project:
 * Uses **Google Protobuf** for decoding EcoFlow telemetry.
 * Uses **Paho MQTT** for message handling.
 * Automatically integrates with Home Assistant via **MQTT Discovery**.
-* tolwi  [Ecoflow Cloud Integration] (https://github.com/tolwi/hassio-ecoflow-cloud)
+* tolwi [Ecoflow Cloud Integration](https://github.com/tolwi/hassio-ecoflow-cloud)
 
 Many thanks to [Tom Van Dyck](https://github.com/tomvd/) for sharing their findings for local control:
 https://github.com/tomvd/local-powerstream
