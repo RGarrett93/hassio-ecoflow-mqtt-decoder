@@ -36,7 +36,7 @@ This lets you fully monitor and control your PowerStream devices within Home Ass
 
 4. In Home Assistant:
 
-   * Go to **Settings → Add-ons → Add-on Store → ⋮ (three dots) → Repositories** → copy `https://github.com/RGarrett93/hassio-ecoflow-mqtt-decoder` → ADD.
+   * Go to **Settings → Add-ons → Add-on Store → ⋮ (three dots) → Repositories** → Copy `https://github.com/RGarrett93/hassio-ecoflow-mqtt-decoder` → **ADD**.
 
 5. Find **EcoFlow MQTT Decoder** in the add-on list and install it.
 
