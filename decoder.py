@@ -65,7 +65,7 @@ class EcoflowDecoder:
             if not msg.payload: return logging.info("Empty payload received.")
             message = HeaderMessage(); message.ParseFromString(msg.payload)
             for header in message.header:
-                if 'F5P' not in header.device_sn or header.cmd_id != 1: continue
+                if not header.device_sn.startswith("HW51") or header.cmd_id != 1: continue
                 heartbeat = InverterHeartbeat(); heartbeat.ParseFromString(header.pdata)
                 logging.info(f"[{header.device_sn}] Decoded heartbeat: {heartbeat}")
                 self.heartbeats[header.device_sn], self.last_seen[header.device_sn] = heartbeat, time.time()
