@@ -423,7 +423,7 @@ class EcoflowDecoder:
         short_name = match.group(1)
         # Reconstruct full device_sn from heartbeats dict keys (find match by last 4 chars)
         device_sn = next((sn for sn in self.heartbeats if sn.endswith(short_name[-4:].upper())), None)
-        if not device_sn or 'F5P' not in device_sn:
+        if not device_sn or not device_sn.startswith("HW51"):
             return
 
         logging.info(f"Received MQTT power limit update for {device_sn} via {short_name}: {payload}")
@@ -484,7 +484,7 @@ class EcoflowDecoder:
                 device_sn = sn
                 break
 
-        if not device_sn or 'F5P' not in device_sn:
+        if not device_sn or not device_sn.startswith("HW51"):
             return
 
         value = 0 if payload == "Prioritize power supply" else 1
@@ -535,7 +535,7 @@ class EcoflowDecoder:
                 device_sn = sn
                 break
 
-        if not device_sn or 'F5P' not in device_sn:
+        if not device_sn or not device_sn.startswith("HW51"):
             return
 
         try:
@@ -583,7 +583,7 @@ class EcoflowDecoder:
                 device_sn = sn
                 break
 
-        if not device_sn or 'F5P' not in device_sn:
+        if not device_sn or not device_sn.startswith("HW51"):
             return
 
         try:
@@ -631,7 +631,7 @@ class EcoflowDecoder:
                 device_sn = sn
                 break
 
-        if not device_sn or 'F5P' not in device_sn:
+        if not device_sn or not device_sn.startswith("HW51"):
             return
 
         try:
