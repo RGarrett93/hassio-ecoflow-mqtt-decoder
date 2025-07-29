@@ -21,7 +21,7 @@ class EcoflowDecoder:
         self.topic = "/sys/75/+/thing/protobuf/upstream"
         self.heartbeats, self.last_seen, self.last_limit_value = {}, {}, {}
         self.offline_timeout, self.discovery_interval, self.heartbeat_interval = 300, 300, 30
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.reconnect_delay_set(min_delay=1, max_delay=30)
         if self.mqtt_user:
             self.client.username_pw_set(self.mqtt_user, self.mqtt_password)
@@ -45,8 +45,8 @@ class EcoflowDecoder:
     def loop_heartbeat(self):
         while True: time.sleep(self.heartbeat_interval); self.send_inverter_heartbeat()
 
-    def on_connect(self, client, userdata, flags, rc):
-        logging.info("Connected to MQTT broker")
+    def on_connect(self, client, userdata, flags, reason_code, properties=None):
+        logging.info(f"Connected to MQTT broker (reason_code={reason_code})")
         client.subscribe(self.topic)
         client.subscribe("homeassistant/number/+/set")
         client.subscribe("homeassistant/select/+/set")
