@@ -22,6 +22,7 @@ class EcoflowDecoder:
         self.heartbeats, self.last_seen, self.last_limit_value = {}, {}, {}
         self.offline_timeout, self.discovery_interval, self.heartbeat_interval = 300, 300, 30
         self.heartbeat_logging = options.get("heartbeat_logging", False)
+        self.control_logging = options.get("control_logging", False)
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.reconnect_delay_set(min_delay=1, max_delay=30)
         if self.mqtt_user:
@@ -78,7 +79,7 @@ class EcoflowDecoder:
                 self.last_seen[header.device_sn] = time.time()
                 self.publish_heartbeat(header.device_sn, heartbeat)
         except DecodeError as e:
-            logging.error(f"Decode error: {e}")
+            logging.info(f"Decode error: {e}")
 
     def republish_discovery(self):
         logging.info("Republishing MQTT discovery for all known EcoFlow devices...")
@@ -109,7 +110,8 @@ class EcoflowDecoder:
                 ack_type=0, 
                 seq=int(time.time()))
             self.client.publish(f"/sys/75/{sn}/thing/property/cmd", hb.SerializeToString())
-            logging.info(f"Sent inverter heartbeat to {sn}")
+            if self.heartbeat_logging:         
+                logging.info(f"Sent inverter heartbeat to {sn}")
 
     def publish_heartbeat(self, device_sn, hb, force_zero=False):
         short_name = f"ps{device_sn[-4:].lower()}"
@@ -433,8 +435,8 @@ class EcoflowDecoder:
         device_sn = next((sn for sn in self.heartbeats if sn.endswith(short_name[-4:].upper())), None)
         if not device_sn or not device_sn.startswith("HW51"):
             return
-
-        logging.info(f"Received MQTT power limit update for {device_sn} via {short_name}: {payload}")
+        if self.control_logging:
+            logging.info(f"Received MQTT power limit update for {device_sn} via {short_name}: {payload}")
 
         try:
             watts = int(float(payload))
@@ -442,7 +444,8 @@ class EcoflowDecoder:
 
             last_value = self.last_limit_value.get(device_sn)
             if last_value == watts:
-                logging.info(f"Power limit {watts}W unchanged for {device_sn}, skipping.")
+                if self.control_logging:
+                    logging.info(f"Power limit {watts}W unchanged for {device_sn}, skipping.")
                 return
 
             self.last_limit_value[device_sn] = watts
@@ -472,9 +475,10 @@ class EcoflowDecoder:
 
             topic = f"/sys/75/{device_sn}/thing/property/cmd"
             self.client.publish(topic, msg.SerializeToString())
-            logging.info(f"Sent power limit {watts}W ({deci_watts} deciwatts) to {device_sn}")
+            if self.control_logging:
+                logging.info(f"Sent power limit {watts}W ({deci_watts} deciwatts) to {device_sn}")
         except Exception as e:
-            logging.error(f"Failed to send power limit command for {device_sn}: {e}")
+            logging.info(f"Failed to send power limit command for {device_sn}: {e}")
 
     def on_supply_mode_change(self, client, userdata, msg):
         topic = msg.topic
@@ -496,7 +500,8 @@ class EcoflowDecoder:
             return
 
         value = 0 if payload == "Prioritize power supply" else 1
-        logging.info(f"Received supply mode change for {short_name} ({device_sn}): {payload} -> {value}")
+        if self.control_logging:
+            logging.info(f"Received supply mode change for {short_name} ({device_sn}): {payload} -> {value}")
 
         try:
             pack = SupplyPriorityPack(supply_priority=value)
@@ -523,10 +528,11 @@ class EcoflowDecoder:
             msg_out = setMessage(header=header)
             topic = f"/sys/75/{device_sn}/thing/property/cmd"
             self.client.publish(topic, msg_out.SerializeToString())
-            logging.info(f"Sent raw SupplyPriorityPack ({value}) to {short_name} ({device_sn})")
+            if self.control_logging:
+                logging.info(f"Sent raw SupplyPriorityPack ({value}) to {short_name} ({device_sn})")
 
         except Exception as e:
-            logging.error(f"Failed to send supply priority command for {short_name} ({device_sn}): {e}")
+            logging.info(f"Failed to send supply priority command for {short_name} ({device_sn}): {e}")
 
     def on_lower_limit_change(self, client, userdata, msg):
         topic = msg.topic
@@ -572,9 +578,10 @@ class EcoflowDecoder:
             )
             topic = f"/sys/75/{device_sn}/thing/property/cmd"
             self.client.publish(topic, msg_out.SerializeToString())
-            logging.info(f"Sent Battery Lower Limit {value}% to {short_name} ({device_sn})")
+            if self.control_logging:
+                logging.info(f"Sent Battery Lower Limit {value}% to {short_name} ({device_sn})")
         except Exception as e:
-            logging.error(f"Failed to send Battery Lower Limit for {short_name} ({device_sn}): {e}")
+            logging.info(f"Failed to send Battery Lower Limit for {short_name} ({device_sn}): {e}")
 
     def on_upper_limit_change(self, client, userdata, msg):
         topic = msg.topic
@@ -620,9 +627,10 @@ class EcoflowDecoder:
             )
             topic = f"/sys/75/{device_sn}/thing/property/cmd"
             self.client.publish(topic, msg_out.SerializeToString())
-            logging.info(f"Sent Battery Upper Limit {value}% to {short_name} ({device_sn})")
+            if self.control_logging:
+                logging.info(f"Sent Battery Upper Limit {value}% to {short_name} ({device_sn})")
         except Exception as e:
-            logging.error(f"Failed to send Battery Upper Limit for {short_name} ({device_sn}): {e}")
+            logging.info(f"Failed to send Battery Upper Limit for {short_name} ({device_sn}): {e}")
 
     def on_brightness_change(self, client, userdata, msg):
         topic = msg.topic
@@ -671,9 +679,10 @@ class EcoflowDecoder:
             )
             topic = f"/sys/75/{device_sn}/thing/property/cmd"
             self.client.publish(topic, msg_out.SerializeToString())
-            logging.info(f"Sent Brightness {percent}% ({scaled_value} bits) to {short_name} ({device_sn})")
+            if self.control_logging:
+                logging.info(f"Sent Brightness {percent}% ({scaled_value} bits) to {short_name} ({device_sn})")
         except Exception as e:
-            logging.error(f"Failed to send Brightness for {short_name} ({device_sn}): {e}")
+            logging.info(f"Failed to send Brightness for {short_name} ({device_sn}): {e}")
 
 if __name__ == "__main__":
     decoder = EcoflowDecoder()
