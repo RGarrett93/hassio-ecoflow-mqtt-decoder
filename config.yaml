@@ -19,9 +19,11 @@ options:
   mqtt_user: ""
   mqtt_password: ""
   heartbeat_logging: false
+  control_logging: false
 schema:
   mqtt_host: str
   mqtt_port: int
   mqtt_user: str
   mqtt_password: password
   heartbeat_logging: bool
+  control_logging: bool
