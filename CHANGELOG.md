@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.4
+### Added
+- `control_logging` configuration option to enable or disable verbose logging of commands sent (disabled by default).
+
+### Notes
+- Minor update to include control_logging.
+
 ## v1.0.3
 ### Added
 - `heartbeat_logging` configuration option to enable or disable verbose logging of decoded heartbeats (disabled by default).
