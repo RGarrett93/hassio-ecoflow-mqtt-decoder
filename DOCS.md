@@ -79,6 +79,53 @@ mqtt_password: "your_mqtt_password"
 
 ---
 
+## Exmaple of an Home Assistant automation for adjusting Power Limit with a Shelly 3EM locally
+
+```
+alias: "PS**** Power Load Adjustment "
+description: ""
+triggers:
+  - trigger: state
+    entity_id:
+      - sensor.shellyem3_************_channel_a_power
+conditions:
+  - condition: state
+    state: "on"
+    entity_id: binary_sensor.ecoflow_ps****_online
+actions:
+  - variables:
+      current_grid_power: "{{ states('sensor.shellyem3_************_channel_a_power') | float(0) }}"
+      inverter_output: "{{ states('sensor.ecoflow_ps****_inverter_output_power') | float(0) }}"
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ states('sensor.ecoflow_ps****_pv1_input_voltage') | float(0) >
+              28 or
+                 states('sensor.ecoflow_ps****_pv2_input_voltage') | float(0) > 28 }}
+        sequence:
+          - variables:
+              new_limit: |
+                {% if current_grid_power < 0 %}
+                  {{ inverter_output - (current_grid_power | abs) }}
+                {% else %}
+                  {{ inverter_output + current_grid_power }}
+                {% endif %}
+          - data:
+              value: >
+                {{ [ [ new_limit, max_output ] | min, min_output ] | max |
+                round(0) }}
+            action: number.set_value
+            target:
+              entity_id: number.ecoflow_ps****_power_limit
+mode: single
+variables:
+  max_output: 800
+  min_output: 0
+```
+
+---
+
 ## Credits
 
 This project:
