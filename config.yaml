@@ -1,5 +1,5 @@
 name: "EcoFlow MQTT Decoder"
-version: "1.0.2"
+version: "1.0.3"
 slug: "ecoflow_mqtt_decoder"
 description: "Decodes EcoFlow MQTT Protobuf messages and republishes to Home Assistant via MQTT discovery."
 arch:
@@ -17,8 +17,10 @@ options:
   mqtt_port: 1883
   mqtt_user: ""
   mqtt_password: ""
+  heartbeat_logging: false
 schema:
   mqtt_host: str
   mqtt_port: int
   mqtt_user: str
   mqtt_password: password
+  heartbeat_logging: bool
