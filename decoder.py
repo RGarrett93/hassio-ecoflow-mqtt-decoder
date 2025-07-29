@@ -21,6 +21,7 @@ class EcoflowDecoder:
         self.topic = "/sys/75/+/thing/protobuf/upstream"
         self.heartbeats, self.last_seen, self.last_limit_value = {}, {}, {}
         self.offline_timeout, self.discovery_interval, self.heartbeat_interval = 300, 300, 30
+        self.heartbeat_logging = options.get("heartbeat_logging", False)
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.reconnect_delay_set(min_delay=1, max_delay=30)
         if self.mqtt_user:
@@ -62,15 +63,22 @@ class EcoflowDecoder:
 
     def on_message(self, client, userdata, msg):
         try:
-            if not msg.payload: return logging.info("Empty payload received.")
-            message = HeaderMessage(); message.ParseFromString(msg.payload)
+            if not msg.payload:
+                return logging.info("Empty payload received.")
+            message = HeaderMessage()
+            message.ParseFromString(msg.payload)
             for header in message.header:
-                if not header.device_sn.startswith("HW51") or header.cmd_id != 1: continue
-                heartbeat = InverterHeartbeat(); heartbeat.ParseFromString(header.pdata)
-                logging.info(f"[{header.device_sn}] Decoded heartbeat: {heartbeat}")
-                self.heartbeats[header.device_sn], self.last_seen[header.device_sn] = heartbeat, time.time()
+                if not header.device_sn.startswith("HW51") or header.cmd_id != 1:
+                    continue
+                heartbeat = InverterHeartbeat()
+                heartbeat.ParseFromString(header.pdata)
+                if self.heartbeat_logging:
+                    logging.info(f"[{header.device_sn}] Decoded heartbeat: {heartbeat}")
+                self.heartbeats[header.device_sn] = heartbeat
+                self.last_seen[header.device_sn] = time.time()
                 self.publish_heartbeat(header.device_sn, heartbeat)
-        except DecodeError as e: logging.error(f"Decode error: {e}")
+        except DecodeError as e:
+            logging.error(f"Decode error: {e}")
 
     def republish_discovery(self):
         logging.info("Republishing MQTT discovery for all known EcoFlow devices...")
