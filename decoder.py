@@ -440,7 +440,7 @@ class EcoflowDecoder:
 
         try:
             watts = int(float(payload))
-            deci_watts = max(1, watts * 10)
+            deci_watts = max(0, watts * 10)
 
             last_value = self.last_limit_value.get(device_sn)
             if last_value == watts:
