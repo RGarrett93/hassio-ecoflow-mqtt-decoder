@@ -79,7 +79,7 @@ mqtt_password: "your_mqtt_password"
 
 ---
 
-## Exmaple of an Home Assistant automation for adjusting Power Limit with a Shelly 3EM locally
+## Exmaple of an Home Assistant automation for adjusting Power Limit with a Shelly 3EM
 
 ```
 alias: "PS**** Power Load Adjustment "
