@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.5
+### Fix
+- `deci_watts` preventing  0W from being sent, thanks @RudolfRendier.
+
+### Notes
+- No breaking changes.
+
 ## v1.0.4
 ### Added
 - `control_logging` configuration option to enable or disable verbose logging of commands sent (disabled by default).
