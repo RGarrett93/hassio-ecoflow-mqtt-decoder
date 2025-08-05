@@ -272,8 +272,8 @@ class EcoflowDecoder:
             "inv_brightness": (brightness_percent, "%"),
             "heartbeat_frequency": (hb.heartbeat_frequency, "s"),
             "rated_power": (hb.rated_power / 10.0, "W"),
-            "battery_charge_remain": (hb.battery_charge_remain, "Wh"),
-            "battery_discharge_remain": (hb.battery_discharge_remain, "Wh")
+            "battery_charge_remain": (hb.battery_charge_remain, "min"),
+            "battery_discharge_remain": (hb.battery_discharge_remain, "min")
         }
 
         device_classes = {
@@ -285,7 +285,8 @@ class EcoflowDecoder:
             "%": "battery",
             "C": "temperature",
             "Hz": "frequency",
-            "s": "duration"
+            "s": "duration",
+            "min": "duration"
         }
 
         # When publishing MQTT discovery, mark all error and warning code entities as disabled by default.
