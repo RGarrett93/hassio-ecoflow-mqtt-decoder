@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.6
+### Fix
+- `battery_charge_remain` device class and measurement corrected.
+- `battery_discharge_remain` device class and measurement corrected.
+### Notes
+- No breaking changes.
+
 ## v1.0.5
 ### Fix
 - `deci_watts` preventing  0W from being sent, thanks @RudolfRendier.
