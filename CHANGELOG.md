@@ -2,8 +2,8 @@
 
 ## v1.0.6
 ### Fix
-- `battery_charge_remain` device class and measurement corrected.
-- `battery_discharge_remain` device class and measurement corrected.
+- `battery_charge_remain` device class and unit of measurement corrected.
+- `battery_discharge_remain` device class and unit of measurement corrected.
 ### Notes
 - No breaking changes.
 
