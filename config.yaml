@@ -1,5 +1,5 @@
 name: "EcoFlow MQTT Decoder"
-version: "1.0.6"
+version: "1.0.7"
 slug: "ecoflow_mqtt_decoder"
 description: "Decodes EcoFlow MQTT Protobuf messages and republishes to Home Assistant via MQTT discovery."
 url: https://github.com/RGarrett93/hassio-ecoflow-mqtt-decoder
