@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.7
+### Fix
+- Prevented “online blip” while devices are offline by avoiding state republish when no recent heartbeat traffic has been received.
+- Eliminated Home Assistant MQTT number range errors while offline (e.g. `battery_charge_limit` min 50) by no longer publishing out-of-range `0` states.
+- Improved offline handling by using MQTT availability so entities become `unavailable` instead of being force-zeroed.
+
+### Notes
+- No breaking changes.
+- Existing entity IDs and discovery topics remain the same; only offline/availability behavior changed.
+
 ## v1.0.6
 ### Fix
 - `battery_charge_remain` device class and unit of measurement corrected.

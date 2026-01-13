@@ -20,6 +20,7 @@ class EcoflowDecoder:
         self.mqtt_password = options.get("mqtt_password", "")
         self.topic = "/sys/75/+/thing/protobuf/upstream"
         self.heartbeats, self.last_seen, self.last_limit_value = {}, {}, {}
+        self.device_online = {}
         self.offline_timeout, self.discovery_interval, self.heartbeat_interval = 300, 300, 30
         self.heartbeat_logging = options.get("heartbeat_logging", False)
         self.control_logging = options.get("control_logging", False)
@@ -77,20 +78,46 @@ class EcoflowDecoder:
                     logging.info(f"[{header.device_sn}] Decoded heartbeat: {heartbeat}")
                 self.heartbeats[header.device_sn] = heartbeat
                 self.last_seen[header.device_sn] = time.time()
+                if not self._is_online(header.device_sn):
+                    self.device_online[header.device_sn] = True
+                    self._publish_availability(header.device_sn, True)
                 self.publish_heartbeat(header.device_sn, heartbeat)
         except DecodeError as e:
             logging.info(f"Decode error: {e}")
 
     def republish_discovery(self):
         logging.info("Republishing MQTT discovery for all known EcoFlow devices...")
-        for sn, hb in self.heartbeats.items(): self.publish_heartbeat(sn, hb)
-
+        for sn, hb in self.heartbeats.items():
+            self.publish_heartbeat(sn, hb, publish_state=self._is_online(sn))
+        
     def check_device_offline(self):
         now = time.time()
         for sn, last in list(self.last_seen.items()):
-            if now - last > self.offline_timeout:
-                logging.info(f"{sn} is offline. Forcing zero state.")
-                self.publish_heartbeat(sn, InverterHeartbeat(), force_zero=True)
+            is_now_offline = (now - last) > self.offline_timeout
+            was_online = self._is_online(sn)
+
+            if is_now_offline and was_online:
+                logging.info(f"{sn} is offline. Marking unavailable.")
+                self.device_online[sn] = False
+                self._publish_availability(sn, False)
+
+                short_name = self._short_name(sn)
+                online_state_topic = f"homeassistant/binary_sensor/ecoflow_{short_name}_online/state"
+                self.client.publish(online_state_topic, "OFF", retain=True)
+
+    def _short_name(self, device_sn: str) -> str:
+        return f"ps{device_sn[-4:].lower()}"
+
+    def _availability_topic(self, device_sn: str) -> str:
+        short_name = self._short_name(device_sn)
+        return f"homeassistant/ecoflow_{short_name}/availability"
+
+    def _publish_availability(self, device_sn: str, online: bool):
+        topic = self._availability_topic(device_sn)
+        self.client.publish(topic, "online" if online else "offline", retain=True)
+
+    def _is_online(self, device_sn: str) -> bool:
+        return self.device_online.get(device_sn, True)
 
     def send_inverter_heartbeat(self):
         for sn in self.heartbeats:
@@ -113,9 +140,11 @@ class EcoflowDecoder:
             if self.heartbeat_logging:         
                 logging.info(f"Sent inverter heartbeat to {sn}")
 
-    def publish_heartbeat(self, device_sn, hb, force_zero=False):
+    def publish_heartbeat(self, device_sn, hb, publish_state=True):
         short_name = f"ps{device_sn[-4:].lower()}"
         last4 = device_sn[-4:].lower()
+
+        availability_topic = self._availability_topic(device_sn)
 
         # Human-readable names for fields
         field_names = {
@@ -183,17 +212,22 @@ class EcoflowDecoder:
 
         base_topic = f"homeassistant/sensor/ecoflow_{short_name}"
         online_topic = f"homeassistant/binary_sensor/ecoflow_{short_name}_online"
-        mode_topic = f"homeassistant/select/ecoflow_{short_name}_supply_mode/state"
+
+        mode_state_topic = f"homeassistant/select/ecoflow_{short_name}_supply_mode/state"
         mode_value = "Prioritize power supply" if hb.supply_priority == 0 else "Prioritize power storage"
-        initial = int(hb.permanent_watts / 10) if not force_zero else 0
-        self.last_limit_value[device_sn] = initial
 
         # Convert raw brightness (0–1023) to percentage for HA
-        brightness_percent = 0
-        if hasattr(hb, "inv_brightness"):
-            brightness_percent = int((hb.inv_brightness / 1023.0) * 100)
+        brightness_percent = int((hb.inv_brightness / 1023.0) * 100) if hasattr(hb, "inv_brightness") else 0
 
-        # Online sensor configuration
+        # Device info
+        device_info = {
+            "identifiers": [f"ecoflow_{short_name}"],
+            "manufacturer": "EcoFlow",
+            "model": "PowerStream",
+            "name": f"EcoFlow PS{device_sn[-4:]}"
+        }
+
+        # Online binary_sensor (represents availability)
         config_online = {
             "name": "Online",
             "state_topic": f"{online_topic}/state",
@@ -201,18 +235,18 @@ class EcoflowDecoder:
             "device_class": "connectivity",
             "payload_on": "ON",
             "payload_off": "OFF",
-            "device": {
-                "identifiers": [f"ecoflow_{short_name}"],
-                "manufacturer": "EcoFlow",
-                "model": "PowerStream",
-                "name": f"EcoFlow PS{device_sn[-4:]}"
-            }
+            "device": device_info
         }
         self.client.publish(f"{online_topic}/config", json.dumps(config_online), retain=True)
-        self.client.publish(f"{online_topic}/state", "OFF" if force_zero else "ON", retain=True)
-        self.client.publish(mode_topic, mode_value, retain=True)
 
-        # Field definitions including all InverterHeartbeat fields, with scaling and warnings/errors disabled by default
+        # Keep it consistent with our derived online state
+        online_now = self._is_online(device_sn)
+        self.client.publish(f"{online_topic}/state", "ON" if online_now else "OFF", retain=True)
+
+        # ---- Publish availability topic (retained) ----
+        self._publish_availability(device_sn, online_now)
+
+        # ---- Field definitions ----
         fields = {
             "inv_error_code": (hb.inv_error_code, None),
             "inv_warning_code": (hb.inv_warning_code, None),
@@ -289,10 +323,9 @@ class EcoflowDecoder:
             "min": "duration"
         }
 
-        # When publishing MQTT discovery, mark all error and warning code entities as disabled by default.
         hidden_entities = [k for k in fields.keys() if "error_code" in k or "warning_code" in k or "status" in k]
 
-        # Publish each sensor
+        # Publish each sensor (with availability)
         for key, (value, unit) in fields.items():
             config_topic = f"{base_topic}/{key}/config"
             state_topic = f"{base_topic}/{key}/state"
@@ -300,12 +333,10 @@ class EcoflowDecoder:
                 "name": field_names.get(key, key.replace('_', ' ').title()),
                 "state_topic": state_topic,
                 "unique_id": f"ecoflow_{last4}_{key}",
-                "device": {
-                    "identifiers": [f"ecoflow_{short_name}"],
-                    "manufacturer": "EcoFlow",
-                    "model": "PowerStream",
-                    "name": f"EcoFlow PS{device_sn[-4:]}"
-                }
+                "availability_topic": availability_topic,
+                "payload_available": "online",
+                "payload_not_available": "offline",
+                "device": device_info
             }
             if unit:
                 config_payload["unit_of_measurement"] = unit
@@ -313,116 +344,106 @@ class EcoflowDecoder:
                     config_payload["device_class"] = device_classes[unit]
             if key in hidden_entities:
                 config_payload["enabled_by_default"] = False
-            self.client.publish(config_topic, json.dumps(config_payload), retain=True)
-            self.client.publish(state_topic, "0" if force_zero else str(value), retain=True)
 
-        # Power limit control
+            self.client.publish(config_topic, json.dumps(config_payload), retain=True)
+
+            # Publish state when online (prevents zero spam + invalid ranges)
+            if publish_state and online_now:
+                self.client.publish(state_topic, str(value), retain=True)
+
+        # Controls (number/select)
+
+        # Power limit number
         limit_topic = f"homeassistant/number/ecoflow_{short_name}_power_limit/config"
+        limit_state = f"homeassistant/number/ecoflow_{short_name}_power_limit/state"
         limit_payload = {
             "name": "Power Limit",
-            "min": 0,
-            "max": 800,
-            "step": 1,
-            "mode": "box",
-            "state_topic": f"homeassistant/number/ecoflow_{short_name}_power_limit/state",
+            "min": 0, "max": 800, "step": 1, "mode": "box",
+            "state_topic": limit_state,
             "command_topic": f"homeassistant/number/ecoflow_{short_name}_power_limit/set",
             "unique_id": f"ecoflow_{last4}_power_limit",
-            "device": {
-                "identifiers": [f"ecoflow_{short_name}"],
-                "manufacturer": "EcoFlow",
-                "model": "PowerStream",
-                "name": f"EcoFlow PS{device_sn[-4:]}"
-            }
+            "availability_topic": availability_topic,
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "device": device_info
         }
         self.client.publish(limit_topic, json.dumps(limit_payload), retain=True)
-        self.client.publish(limit_payload["state_topic"], str(initial), retain=True)
+        if publish_state and online_now:
+            self.client.publish(limit_state, str(int(hb.permanent_watts / 10)), retain=True)
 
         # Supply mode select
         select_topic = f"homeassistant/select/ecoflow_{short_name}_supply_mode/config"
         select_payload = {
             "name": "Power Supply Mode",
             "options": ["Prioritize power supply", "Prioritize power storage"],
-            "state_topic": f"homeassistant/select/ecoflow_{short_name}_supply_mode/state",
+            "state_topic": mode_state_topic,
             "command_topic": f"homeassistant/select/ecoflow_{short_name}_supply_mode/set",
             "unique_id": f"ecoflow_{last4}_supply_priority",
-            "device": {
-                "identifiers": [f"ecoflow_{short_name}"],
-                "manufacturer": "EcoFlow",
-                "model": "PowerStream",
-                "name": f"EcoFlow PS{device_sn[-4:]}"
-            }
+            "availability_topic": availability_topic,
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "device": device_info
         }
         self.client.publish(select_topic, json.dumps(select_payload), retain=True)
+        if publish_state and online_now:
+            self.client.publish(mode_state_topic, mode_value, retain=True)
 
-        # Battery lower limit slider
+        # Battery lower limit number (0–30) - valid for zero but avoid publishing while offline
         lower_topic = f"homeassistant/number/ecoflow_{short_name}_battery_lower_limit/config"
+        lower_state = f"homeassistant/number/ecoflow_{short_name}_battery_lower_limit/state"
         lower_payload = {
             "name": "Battery Discharge Limit",
-            "min": 0,
-            "max": 30,
-            "step": 1,
-            "mode": "box",
-            "state_topic": f"homeassistant/number/ecoflow_{short_name}_battery_lower_limit/state",
+            "min": 0, "max": 30, "step": 1, "mode": "box",
+            "state_topic": lower_state,
             "command_topic": f"homeassistant/number/ecoflow_{short_name}_battery_lower_limit/set",
             "unique_id": f"ecoflow_{last4}_battery_lower_limit",
-            "device": {
-                "identifiers": [f"ecoflow_{short_name}"],
-                "manufacturer": "EcoFlow",
-                "model": "PowerStream",
-                "name": f"EcoFlow PS{device_sn[-4:]}"
-            },
-            "unit_of_measurement": "%"
+            "unit_of_measurement": "%",
+            "availability_topic": availability_topic,
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "device": device_info
         }
         self.client.publish(lower_topic, json.dumps(lower_payload), retain=True)
-        self.client.publish(lower_payload["state_topic"], str(hb.lower_limit if not force_zero else 0), retain=True)
+        if publish_state and online_now:
+            self.client.publish(lower_state, str(hb.lower_limit), retain=True)
 
-        # Battery upper limit slider
+        # Battery upper limit number (50–100) - No longer zero when offline
         upper_topic = f"homeassistant/number/ecoflow_{short_name}_battery_upper_limit/config"
+        upper_state = f"homeassistant/number/ecoflow_{short_name}_battery_upper_limit/state"
         upper_payload = {
             "name": "Battery Charge Limit",
-            "min": 50,
-            "max": 100,
-            "step": 1,
-            "mode": "box",
-            "state_topic": f"homeassistant/number/ecoflow_{short_name}_battery_upper_limit/state",
+            "min": 50, "max": 100, "step": 1, "mode": "box",
+            "state_topic": upper_state,
             "command_topic": f"homeassistant/number/ecoflow_{short_name}_battery_upper_limit/set",
             "unique_id": f"ecoflow_{last4}_battery_upper_limit",
-            "device": {
-                "identifiers": [f"ecoflow_{short_name}"],
-                "manufacturer": "EcoFlow",
-                "model": "PowerStream",
-                "name": f"EcoFlow PS{device_sn[-4:]}"
-            },
-            "unit_of_measurement": "%"
+            "unit_of_measurement": "%",
+            "availability_topic": availability_topic,
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "device": device_info
         }
         self.client.publish(upper_topic, json.dumps(upper_payload), retain=True)
-        self.client.publish(upper_payload["state_topic"], str(hb.upper_limit if not force_zero else 0), retain=True)
+        if publish_state and online_now:
+            self.client.publish(upper_state, str(hb.upper_limit), retain=True)
 
-        # Brightness slider
+        # Brightness number (0–100)
         bright_topic = f"homeassistant/number/ecoflow_{short_name}_inverter_brightness/config"
+        bright_state = f"homeassistant/number/ecoflow_{short_name}_inverter_brightness/state"
         bright_payload = {
             "name": "Inverter Brightness",
-            "min": 0,
-            "max": 100,
-            "step": 1,
-            "mode": "box",
-            "state_topic": f"homeassistant/number/ecoflow_{short_name}_inverter_brightness/state",
+            "min": 0, "max": 100, "step": 1, "mode": "box",
+            "state_topic": bright_state,
             "command_topic": f"homeassistant/number/ecoflow_{short_name}_inverter_brightness/set",
             "unique_id": f"ecoflow_{last4}_inverter_brightness",
-            "device": {
-                "identifiers": [f"ecoflow_{short_name}"],
-                "manufacturer": "EcoFlow",
-                "model": "PowerStream",
-                "name": f"EcoFlow PS{device_sn[-4:]}"
-            },
-            "unit_of_measurement": "%"
+            "unit_of_measurement": "%",
+            "availability_topic": availability_topic,
+            "payload_available": "online",
+            "payload_not_available": "offline",
+            "device": device_info
         }
         self.client.publish(bright_topic, json.dumps(bright_payload), retain=True)
-        self.client.publish(
-            bright_payload["state_topic"],
-            str(brightness_percent if not force_zero else 0),
-            retain=True
-        )
+        if publish_state and online_now:
+            self.client.publish(bright_state, str(brightness_percent), retain=True)
 
     def on_slider_change_raw(self, client, userdata, msg):
         topic = msg.topic
@@ -490,7 +511,7 @@ class EcoflowDecoder:
             return
         short_name = match.group(1)
 
-        # Find full device_sn from short_name (e.g., ps140)
+        # Find full device_sn from short_name (e.g., ps1400)
         device_sn = None
         for sn in self.heartbeats.keys():
             if sn.lower().endswith(short_name[-4:]):
@@ -543,7 +564,7 @@ class EcoflowDecoder:
             return
         short_name = match.group(1)
 
-        # Resolve short_name (e.g., ps140) back to full device_sn
+        # Resolve short_name (e.g. ps1400) back to full device_sn
         device_sn = None
         for sn in self.heartbeats.keys():
             if sn.lower().endswith(short_name[-4:]):
@@ -592,7 +613,7 @@ class EcoflowDecoder:
             return
         short_name = match.group(1)
 
-        # Resolve short_name (e.g., ps140) back to full device_sn
+        # Resolve short_name (e.g., ps1400) back to full device_sn
         device_sn = None
         for sn in self.heartbeats.keys():
             if sn.lower().endswith(short_name[-4:]):
@@ -641,7 +662,7 @@ class EcoflowDecoder:
             return
         short_name = match.group(1)
 
-        # Resolve short_name (e.g., ps140) back to full device_sn
+        # Resolve short_name (e.g., ps1400) back to full device_sn
         device_sn = None
         for sn in self.heartbeats.keys():
             if sn.lower().endswith(short_name[-4:]):
@@ -653,7 +674,7 @@ class EcoflowDecoder:
 
         try:
             percent = int(float(payload))
-            # Scale 0–100% → 0–1023 (inverter bits)
+            # Scale 0–100% to 0–1023 (inverter bits)
             scaled_value = int((percent / 100.0) * 1023)
 
             pack = BrightnessPack(brightness=scaled_value)
