@@ -5,6 +5,8 @@
 1. Create self TLS certificates for Mosquitto MQTT broker or you can use EMQX addon (Home Assistant Community Add-ons) which will handle that.
 
 2. Use AdGuard or Pi-hole to redirect `mqtt-e.ecoflow.com` to your MQTT broker (your HA IP address).
+**NEW** OR connect your PowerStream directly to HA with this new add-on - which will create a WiFi AP and that you point the PS to and the add-on handles the DNS redirect.
+https://github.com/RGarrett93/hassio-ap-ecoflow-dns-redirect
 
 3. **Optional but recommended** otherwise you have to allow anonymous login to your MQTT broker.
    * Install [MQTT TLS Honeypot Add-on](https://github.com/RGarrett93/hassio-mqtt-honeypot) and run this once, look at the logs and note your Powerstream(s) MQTT credentials.
