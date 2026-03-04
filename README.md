@@ -22,4 +22,4 @@ This lets you fully monitor and control your PowerStream devices within Home Ass
 * Automatically re-publishes discovery topics every 5 minutes (in case HA restarts).
 * Handles offline devices by forcing zeroed values if no messages are received for 5 minutes.
 
-[Installation Documents](https://github.com/RGarrett93/hassio-ecoflow-mqtt-decoder/blob/main/DOCS.md)
+# [Installation Documents](https://github.com/RGarrett93/hassio-ecoflow-mqtt-decoder/blob/main/DOCS.md)
