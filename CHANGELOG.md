@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.0.8
+### Fix
+- Updated the Docker base image to use the multi-architecture Home Assistant base image.
+- Removed the hardcoded `aarch64` base image so the add-on now builds correctly on `amd64` systems after migrating from Raspberry Pi / ARM hardware.
+- This fixes Docker build failures such as:
+`no match for platform in manifest: not found`
+
+### Notes
+- No breaking changes.
+
 ## v1.0.7
 ### Fix
 - Prevented “online blip” while devices are offline by avoiding state republish when no recent heartbeat traffic has been received.
