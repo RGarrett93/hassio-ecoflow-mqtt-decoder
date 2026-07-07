@@ -1,5 +1,4 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:14.0.0
-FROM $BUILD_FROM
+FROM ghcr.io/home-assistant/base:latest
 
 # Install Python & pip
 RUN apk add --no-cache python3 py3-pip
